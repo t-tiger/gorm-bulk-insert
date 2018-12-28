@@ -1,12 +1,12 @@
-package main
+package gobulkinsert
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jinzhu/gorm"
+	"reflect"
 	"strings"
 	"time"
-	"errors"
-	"reflect"
 )
 
 // Insert multiple records at once
@@ -88,7 +88,9 @@ func extractMapValue(value interface{}) (map[string]interface{}, error) {
 
 	for _, field := range (&gorm.Scope{Value: value}).Fields() {
 		// Exclude relational record because it's not directly contained in database columns
-		if field.StructField.Relationship == nil && !field.IsIgnored && !field.IsPrimaryKey {
+		_, hasForeignKey := field.TagSettingsGet("FOREIGNKEY")
+
+		if field.StructField.Relationship == nil && !hasForeignKey && !field.IsIgnored && !field.IsPrimaryKey {
 			if field.Struct.Name == "CreatedAt" || field.Struct.Name == "UpdatedAt" {
 				attrs[field.DBName] = time.Now()
 			} else if field.StructField.HasDefaultValue && field.IsBlank {
