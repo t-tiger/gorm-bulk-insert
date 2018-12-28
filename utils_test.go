@@ -1,25 +1,21 @@
-package main
+package gobulkinsert
 
 import (
+	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
 )
 
 func Test_splitObjects(t *testing.T) {
 	var objArr []interface{}
-
 	for i := 0; i < 100; i++ {
 		objArr = append(objArr, i)
 	}
 
 	objSet := splitObjects(objArr, 30)
 
-	if len(objSet) != 4 {
-		t.Error("split size must be 4")
-	}
-	if len(objSet[len(objSet)-1]) != 10 {
-		t.Error("last chunk size must be 10")
-	}
+	assert.Len(t, objSet, 4)
+	assert.Len(t, objSet[len(objSet)-1], 10)
 }
 
 func Test_sortedKeys(t *testing.T) {
@@ -30,13 +26,7 @@ func Test_sortedKeys(t *testing.T) {
 
 	keys := sortedKeys(value)
 
-	if len(keys) != 9 {
-		t.Error("key size must be 9")
-	}
-	if keys[0] != "1" {
-		t.Error("first key must be 9")
-	}
-	if keys[len(keys)-1] != "9" {
-		t.Error("first key must be 9")
-	}
+	assert.Len(t, keys, 9)
+	assert.Equal(t, keys[0], "1")
+	assert.Equal(t, keys[len(keys)-1], "9")
 }
