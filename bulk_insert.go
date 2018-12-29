@@ -10,10 +10,10 @@ import (
 )
 
 // Insert multiple records at once
-// [objects] 		Must be a slice of struct
-// [chunkSize] 		Number of records to insert at once.
-// 			   		Embedding a large number of variables at once will raise an error beyond the limit of prepared statement.
-// 			   		Larger size will normally lead the better performance, but 2000 to 3000 is reasonable.
+// [objects]        Must be a slice of struct
+// [chunkSize]      Number of records to insert at once.
+//                  Embedding a large number of variables at once will raise an error beyond the limit of prepared statement.
+//                  Larger size will normally lead the better performance, but 2000 to 3000 is reasonable.
 // [excludeColumns] Columns you want to exclude from insert. You can omit if there is no column you want to exclude.
 func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumns ...string) error {
 	// Split records with specified size not to exceed Database parameter limit
