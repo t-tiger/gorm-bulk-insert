@@ -27,3 +27,13 @@ func sortedKeys(val map[string]interface{}) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+// Check if string value is contained in slice
+func containString(s []string, value string) bool {
+	for _, v := range s {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}

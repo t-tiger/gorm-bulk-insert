@@ -30,3 +30,10 @@ func Test_sortedKeys(t *testing.T) {
 	assert.Equal(t, keys[0], "1")
 	assert.Equal(t, keys[len(keys)-1], "9")
 }
+
+func Test_containString(t *testing.T) {
+	sliceVal := []string{"a", "b", "c"}
+
+	assert.True(t, containString(sliceVal, "a"))
+	assert.False(t, containString(sliceVal, "d"))
+}
