@@ -1,4 +1,4 @@
-package gobulkinsert
+package gormbulk
 
 import (
 	"github.com/stretchr/testify/assert"
