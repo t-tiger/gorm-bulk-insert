@@ -10,22 +10,22 @@ import (
 )
 
 // Insert multiple records at once
-func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int) error {
+func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumns ...string) error {
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		if err := insertObjSet(db, objSet); err != nil {
+		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func insertObjSet(db *gorm.DB, objects []interface{}) error {
+func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
 
-	firstAttrs, err := extractMapValue(objects[0])
+	firstAttrs, err := extractMapValue(objects[0], excludeColumns)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func insertObjSet(db *gorm.DB, objects []interface{}) error {
 	}
 
 	for _, obj := range objects {
-		objAttrs, err := extractMapValue(obj)
+		objAttrs, err := extractMapValue(obj, excludeColumns)
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,7 @@ func insertObjSet(db *gorm.DB, objects []interface{}) error {
 }
 
 // Obtain columns and values required for insert from interface
-func extractMapValue(value interface{}) (map[string]interface{}, error) {
+func extractMapValue(value interface{}, excludeColumns []string) (map[string]interface{}, error) {
 	if reflect.ValueOf(value).Kind() != reflect.Struct {
 		return nil, errors.New("value must be kind of Struct")
 	}
@@ -90,7 +90,8 @@ func extractMapValue(value interface{}) (map[string]interface{}, error) {
 		// Exclude relational record because it's not directly contained in database columns
 		_, hasForeignKey := field.TagSettingsGet("FOREIGNKEY")
 
-		if field.StructField.Relationship == nil && !hasForeignKey && !field.IsIgnored && !field.IsPrimaryKey {
+		if !containString(excludeColumns, field.Struct.Name) && field.StructField.Relationship == nil && !hasForeignKey &&
+			!field.IsIgnored && !field.IsPrimaryKey {
 			if field.Struct.Name == "CreatedAt" || field.Struct.Name == "UpdatedAt" {
 				attrs[field.DBName] = time.Now()
 			} else if field.StructField.HasDefaultValue && field.IsBlank {
