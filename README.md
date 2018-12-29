@@ -12,11 +12,11 @@ This library is aimed to solve the BulkInsert problem faced by developers using 
 
 ## Installation
 
-`go get github.com/casbin/gorm-adapter`
+`$ go get github.com/casbin/gorm-adapter`
 
 This library depends on gorm, following command is also necessary unless you've installed gorm.
 
-`go get github.com/jinzhu/gorm`
+`$ go get github.com/jinzhu/gorm`
 
 
 ## Usage
@@ -90,9 +90,9 @@ func main() {
 
 	// columns you want to exclude from Insert, specify as an argument
 	err = gormbulk.BulkInsert(db, insertRecords, 3000, "Email")
-    if err != nil {
-        // do something
-    }
+        if err != nil {
+            // do something
+        }
 }
 ```
 
