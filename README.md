@@ -35,7 +35,7 @@ gormbulk.BulkInsert(db, sliceValue, 3000, "Name", "Email")
 
 Basically, necessary values are automatically chosen. However if you want to exclude some columns explicitly, you can specify this as argument.
 
-In the above pattern `Name` and` Email` fields are excluded.
+In the above pattern `Name` and `Email` fields are excluded.
 
 ### Feature
 
