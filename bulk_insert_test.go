@@ -2,8 +2,6 @@ package gormbulk
 
 import (
 	"database/sql"
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
@@ -22,48 +20,6 @@ type fakeDB struct {
 	Publish   bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
-}
-
-func TestBulkInsert(t *testing.T) {
-	var db *gorm.DB
-	_, mock, err := sqlmock.NewWithDSN("mock_db")
-	if err != nil {
-		panic("Got an unexpected error.")
-	}
-	db, err = gorm.Open("sqlmock", "mock_db")
-	if err != nil {
-		panic("Got an unexpected error.")
-	}
-
-	// error should occur when passing non struct values
-	stringValues := []interface{}{"hoge", "fuga"}
-	err = BulkInsert(db, stringValues, 1)
-	assert.Error(t, err)
-
-	intValues := []interface{}{0, 1}
-	err = BulkInsert(db, intValues, 1)
-	assert.Error(t, err)
-
-	boolValues := []interface{}{true, false}
-	err = BulkInsert(db, boolValues, 1)
-	assert.Error(t, err)
-
-	// passing struct
-	fakeValues := []interface{}{
-		fakeDB{
-			Name: "name1", Email: "", Relation: &fakeRelationDB{},
-			Message: sql.NullString{String: "message1", Valid: true}, Publish: false,
-		},
-		fakeDB{
-			Name: "name2", Email: "test2@test.com", Relation: &fakeRelationDB{},
-			Message: sql.NullString{String: "", Valid: false}, Publish: true,
-		},
-	}
-
-	err = BulkInsert(db, fakeValues, 1)
-	assert.NoError(t, err)
-
-	_ = mock
 }
 
 func Test_extractMapValue(t *testing.T) {
