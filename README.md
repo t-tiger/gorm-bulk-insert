@@ -18,8 +18,9 @@ This library depends on gorm, following command is also necessary unless you've 
 
 `$ go get github.com/jinzhu/gorm`
 
-
 ## Usage
+
+**NOTE: Currently, only supports MySQL. If you want to use with other databases such as PostgreSQL please post a Issue 🙏**
 
 ```go
 gormbulk.BulkInsert(db, sliceValue, 3000)
