@@ -1,14 +1,14 @@
 # Gorm Bulk Insert
 
-`Gorm Bulk Insert` is a library to implement bulk insert using [gorm](https://github.com/jinzhu/gorm). Execute BulkInsert just by passing a slice of struct, as if you were using a gorm regularly.
+`Gorm Bulk Insert` is a library to implement bulk insert using [gorm](https://github.com/jinzhu/gorm). Execute bulk insert just by passing a slice of struct, as if you were using a gorm regularly.
 
 ## Purpose
 
-When saving a large number of records in database, inserting at once - instead of inserting one by one - leads to significant performance improvement. This is widely known as BulkInsert.
+When saving a large number of records in database, inserting at once - instead of inserting one by one - leads to significant performance improvement. This is widely known as bulk insert.
 
-gorm is one of the most popular ORM and contains very developers-friendly features, but BulkInsert is not provided.
+Gorm is one of the most popular ORM and contains very developer-friendly features, but bulk insert is not provided.
 
-This library is aimed to solve the BulkInsert problem faced by developers using gorm.
+This library is aimed to solve the bulk insert problem.
 
 ## Installation
 
@@ -25,7 +25,7 @@ This library depends on gorm, following command is also necessary unless you've 
 gormbulk.BulkInsert(db, sliceValue, 3000)
 ```
 
-Third argument specifies the maximum number of records to BulkInsert at once. This is because inserting a large number of records and embedding variable at once will exceed the limit of prepared statement.
+Third argument specifies the maximum number of records to bulk insert at once. This is because inserting a large number of records and embedding variable at once will exceed the limit of prepared statement.
 
 Depending on the number of variables included, 2000 to 3000 is recommended.
 
@@ -33,14 +33,14 @@ Depending on the number of variables included, 2000 to 3000 is recommended.
 gormbulk.BulkInsert(db, sliceValue, 3000, "Name", "Email")
 ```
 
-Basically, necessary values are automatically chosen. However if you want to exclude some columns explicitly, you can specify this as argument.
+Basically, inserting struct values are automatically chosen. However if you want to exclude some columns explicitly, you can specify as argument.
 
 In the above pattern `Name` and `Email` fields are excluded.
 
 ### Feature
 
 - Just pass a slice of struct as using gorm normally, records will be created.
-    - **NOTE: passing value must be a slice of struct. Map values are not compatible.**
+    - **NOTE: passing value must be a slice of struct. Map or other values are not compatible.**
 - `CreatedAt` and `UpdatedAt` are automatically set to the current time.
 - Fields of relation such as `belongsTo` and `hasMany` are automatically excluded, but foreignKey is subject to Insert.
 
