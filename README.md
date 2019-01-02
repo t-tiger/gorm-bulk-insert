@@ -56,7 +56,7 @@ import (
 	"github.com/t-tiger/gorm-bulk-insert"
 	"log"
 	"time"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 type fakeTable struct {
@@ -68,7 +68,7 @@ type fakeTable struct {
 }
 
 func main() {
-	db, err := gorm.Open("sqlite3", "mydb")
+	db, err := gorm.Open("mysql", "mydb")
 	if err != nil {
 		log.Fatal(err)
 	}
