@@ -20,7 +20,9 @@ This library depends on gorm, following command is also necessary unless you've 
 
 ## Usage
 
-**NOTE: Currently, only supports MySQL. If you want to use with other databases such as PostgreSQL please post a Issue 🙏**
+**Note: Currently, only supports MySQL. If you want to use with other databases such as PostgreSQL please post a Issue**
+
+**Dependency: It depends on 1.9.3 or later version of Gorm. If you've installed earlier version, please update gorm.**
 
 ```go
 gormbulk.BulkInsert(db, sliceValue, 3000)
