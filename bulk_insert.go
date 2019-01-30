@@ -96,7 +96,7 @@ func extractMapValue(value interface{}, excludeColumns []string) (map[string]int
 		_, hasForeignKey := field.TagSettingsGet("FOREIGNKEY")
 
 		if !containString(excludeColumns, field.Struct.Name) && field.StructField.Relationship == nil && !hasForeignKey &&
-			!field.IsIgnored && !field.IsPrimaryKey {
+			!field.IsIgnored && (field.DBName != "id" && !field.IsPrimaryKey) {
 			if field.Struct.Name == "CreatedAt" || field.Struct.Name == "UpdatedAt" {
 				attrs[field.DBName] = time.Now()
 			} else if field.StructField.HasDefaultValue && field.IsBlank {
