@@ -33,8 +33,11 @@ func Test_extractMapValue(t *testing.T) {
 	}
 
 	value := fakeDB{
-		Name: "name1", Email: "test1@test.com", Relation: &fakeRelationDB{},
-		Message: sql.NullString{String: "message1", Valid: true}, Publish: false,
+		Name:     "name1",
+		Email:    "test1@test.com",
+		Relation: &fakeRelationDB{},
+		Message:  sql.NullString{String: "message1", Valid: true},
+		Publish:  false,
 	}
 
 	// test without excluding columns
@@ -48,10 +51,10 @@ func Test_extractMapValue(t *testing.T) {
 	assert.Equal(t, fullKeys, mapKeys)
 
 	// test with excluding columns
-	excludedVal, err := extractMapValue(value, []string{"Email", "CreatdAt"})
+	excludedVal, err := extractMapValue(value, []string{"Email", "CreatedAt"})
 	assert.NoError(t, err)
 
 	excludedKeys := collectKeys(excludedVal)
 	assert.NotContains(t, excludedKeys, "email")
-	assert.NotContains(t, excludedKeys, "createdAt")
+	assert.NotContains(t, excludedKeys, "created_at")
 }
