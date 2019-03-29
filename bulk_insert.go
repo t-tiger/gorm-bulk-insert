@@ -64,7 +64,8 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		// Append variables
 		variables := make([]string, 0, attrSize)
 		for _, key := range sortedKeys(objAttrs) {
-			variables = append(variables, scope.AddToVars(objAttrs[key]))
+			scope.AddToVars(objAttrs[key])
+			variables = append(variables, "?")
 		}
 
 		valueQuery := "(" + strings.Join(variables, ", ") + ")"
