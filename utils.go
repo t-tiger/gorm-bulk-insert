@@ -1,6 +1,13 @@
 package gormbulk
 
-import "sort"
+import (
+	"sort"
+	"time"
+)
+
+var NowFunc = func() time.Time {
+	return time.Now()
+}
 
 // Separate objects into several size
 func splitObjects(objArr []interface{}, size int) [][]interface{} {
