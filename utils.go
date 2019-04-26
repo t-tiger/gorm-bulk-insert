@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-var NowFunc = func() time.Time {
+var NowFunc = func() interface{} {
 	return time.Now()
 }
 
