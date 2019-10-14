@@ -3,10 +3,11 @@ package gormbulk
 import (
 	"errors"
 	"fmt"
-	"github.com/jinzhu/gorm"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/jinzhu/gorm"
 )
 
 // Insert multiple records at once
@@ -45,7 +46,7 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 	// Replace with database column name
 	dbColumns := make([]string, 0, attrSize)
 	for _, key := range sortedKeys(firstAttrs) {
-		dbColumns = append(dbColumns, gorm.ToColumnName(key))
+		dbColumns = append(dbColumns, mainScope.Quote(gorm.ToColumnName(key)))
 	}
 
 	for _, obj := range objects {
