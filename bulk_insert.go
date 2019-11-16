@@ -87,7 +87,12 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 
 // Obtain columns and values required for insert from interface
 func extractMapValue(value interface{}, excludeColumns []string) (map[string]interface{}, error) {
-	if reflect.ValueOf(value).Kind() != reflect.Struct {
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+		value = rv.Interface()
+	}
+	if rv.Kind() != reflect.Struct {
 		return nil, errors.New("value must be kind of Struct")
 	}
 
