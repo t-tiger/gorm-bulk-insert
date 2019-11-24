@@ -3,11 +3,10 @@ package gormbulk
 import (
 	"errors"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/jinzhu/gorm"
 )
 
 // Insert multiple records at once
