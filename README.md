@@ -20,8 +20,6 @@ This library depends on gorm, following command is also necessary unless you've 
 
 ## Usage
 
-**Dependency: It depends on 1.9.3 or later version of Gorm. If you've installed earlier version, please update gorm.**
-
 ```go
 gormbulk.BulkInsert(db, sliceValue, 3000)
 ```
@@ -60,7 +58,7 @@ import (
 )
 
 type fakeTable struct {
-	ID        int
+	ID        int `gorm:"AUTO_INCREMENT"` 
 	Name      string
 	Email     string
 	CreatedAt time.Time
