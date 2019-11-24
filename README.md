@@ -36,6 +36,19 @@ Basically, inserting struct values are automatically chosen. However if you want
 
 In the above pattern `Name` and `Email` fields are excluded.
 
+### AUTO INCREMENT
+
+If auto_increment attribute is assigned to the primary key etc, make sure to set `AUTO_INCREMENT` in model struct.
+
+```go
+type fakeTable struct {
+	ID        int `gorm:"AUTO_INCREMENT"` 
+	Name      string
+}
+```
+
+This is necessary to exclude the auto_increment column from insertion and be numbered by database system. The reason for this requirement is that if all primary keys are excluded, only the surrogate key like auto_increment can be inserted and natural key cannot at all.
+
 ### Feature
 
 - Just pass a slice of struct as using gorm normally, records will be created.
