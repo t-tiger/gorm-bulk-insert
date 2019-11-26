@@ -2,17 +2,19 @@ package gormbulk
 
 import (
 	"database/sql"
-	"github.com/jinzhu/gorm"
-	"github.com/stretchr/testify/assert"
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/jinzhu/gorm"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type fakeRelationTable struct{}
 
 type fakeTable struct {
-	ID        int
+	ID        int `gorm:"primary_key;auto_increment"`
 	Name      string
 	Email     string              `gorm:"default:default@mail.com"`
 	Relation  *fakeRelationTable  `gorm:"foreignkey:RelationID"`
@@ -33,12 +35,15 @@ func Test_extractMapValue(t *testing.T) {
 		return keys
 	}
 
+	notNow := time.Now().Add(-3600 * time.Second)
+
 	value := fakeTable{
-		Name:     "name1",
-		Email:    "test1@test.com",
-		Relation: &fakeRelationTable{},
-		Message:  sql.NullString{String: "message1", Valid: true},
-		Publish:  false,
+		Name:      "name1",
+		Email:     "test1@test.com",
+		Relation:  &fakeRelationTable{},
+		Message:   sql.NullString{String: "message1", Valid: true},
+		CreatedAt: notNow,
+		Publish:   false,
 	}
 
 	// test without excluding columns
@@ -47,6 +52,16 @@ func Test_extractMapValue(t *testing.T) {
 
 	mapVal, err := extractMapValue(value, []string{})
 	assert.NoError(t, err)
+
+	// Ensure we kept the CreatedAt time
+	createdAt, ok := mapVal["created_at"].(time.Time)
+	require.True(t, ok)
+	assert.True(t, createdAt.Before(time.Now().Add(-100*time.Second)))
+
+	// Ensure we set default UpdatedAt time
+	updatedAt, ok := mapVal["updated_at"].(time.Time)
+	require.True(t, ok)
+	assert.True(t, updatedAt.After(time.Now().Add(-1*time.Second)))
 
 	mapKeys := collectKeys(mapVal)
 	assert.Equal(t, fullKeys, mapKeys)
@@ -61,6 +76,9 @@ func Test_extractMapValue(t *testing.T) {
 }
 
 func Test_fieldIsAutoIncrement(t *testing.T) {
+	type explicitSetTable struct {
+		ID int `gorm:"column:id;auto_increment"`
+	}
 	type notSpecifiedTable struct {
 		ID int `gorm:"column:id"`
 	}
@@ -75,8 +93,9 @@ func Test_fieldIsAutoIncrement(t *testing.T) {
 		Value    interface{}
 		Expected bool
 	}{
-		{notSpecifiedTable{}, true},
-		{primaryKeyTable{}, true},
+		{explicitSetTable{}, true},
+		{notSpecifiedTable{}, false},
+		{primaryKeyTable{}, false},
 		{autoIncrementTable{}, false},
 	}
 	for _, c := range cases {
