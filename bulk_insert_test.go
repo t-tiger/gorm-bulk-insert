@@ -104,3 +104,27 @@ func Test_fieldIsAutoIncrement(t *testing.T) {
 		}
 	}
 }
+
+func Test_fieldIsPrimaryAndBlank(t *testing.T) {
+	type notPrimaryTable struct {
+		Dummy int
+	}
+	type primaryKeyTable struct {
+		ID int `gorm:"column:id;primary_key"`
+	}
+
+	cases := []struct {
+		Value    interface{}
+		Expected bool
+	}{
+		{notPrimaryTable{Dummy: 0}, false},
+		{notPrimaryTable{Dummy: 1}, false},
+		{primaryKeyTable{ID: 0}, true},
+		{primaryKeyTable{ID: 1}, false},
+	}
+	for _, c := range cases {
+		for _, field := range (&gorm.Scope{Value: c.Value}).Fields() {
+			assert.Equal(t, fieldIsPrimaryAndBlank(field), c.Expected)
+		}
+	}
+}

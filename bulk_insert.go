@@ -103,7 +103,7 @@ func extractMapValue(value interface{}, excludeColumns []string) (map[string]int
 		_, hasForeignKey := field.TagSettingsGet("FOREIGNKEY")
 
 		if !containString(excludeColumns, field.Struct.Name) && field.StructField.Relationship == nil && !hasForeignKey &&
-			!field.IsIgnored && !fieldIsAutoIncrement(field) {
+			!field.IsIgnored && !fieldIsAutoIncrement(field) && !fieldIsPrimaryAndBlank(field) {
 			if (field.Struct.Name == "CreatedAt" || field.Struct.Name == "UpdatedAt") && field.IsBlank {
 				attrs[field.DBName] = time.Now()
 			} else if field.StructField.HasDefaultValue && field.IsBlank {
@@ -126,4 +126,8 @@ func fieldIsAutoIncrement(field *gorm.Field) bool {
 		return strings.ToLower(value) != "false"
 	}
 	return false
+}
+
+func fieldIsPrimaryAndBlank(field *gorm.Field) bool {
+	return field.IsPrimaryKey && field.IsBlank
 }
