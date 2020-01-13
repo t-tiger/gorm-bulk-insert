@@ -82,7 +82,8 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		strings.Join(placeholders, ", "),
 	))
 
-	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
+	db = db.Exec(mainScope.SQL, mainScope.SQLVars...)
+	return db.Error
 }
 
 // Obtain columns and values required for insert from interface
