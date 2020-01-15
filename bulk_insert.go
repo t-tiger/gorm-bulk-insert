@@ -76,10 +76,16 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		mainScope.SQLVars = append(mainScope.SQLVars, scope.SQLVars...)
 	}
 
-	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s",
+	insertOption := ""
+	if val, ok := db.Get("gorm:insert_option"); ok {
+		insertOption = val.(string)
+	}
+
+	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
 		mainScope.QuotedTableName(),
 		strings.Join(dbColumns, ", "),
 		strings.Join(placeholders, ", "),
+		insertOption,
 	))
 
 	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
