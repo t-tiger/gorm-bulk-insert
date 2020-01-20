@@ -78,7 +78,11 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 
 	insertOption := ""
 	if val, ok := db.Get("gorm:insert_option"); ok {
-		insertOption = val.(string)
+		strVal, ok := val.(string)
+		if !ok {
+			return errors.New("gorm:insert_option should be a string")
+		}
+		insertOption = strVal
 	}
 
 	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
