@@ -1,9 +1,9 @@
-package gormbulk
+package internal
 
 import "sort"
 
 // Separate objects into several size
-func splitObjects(objArr []interface{}, size int) [][]interface{} {
+func SplitObjects(objArr []interface{}, size int) [][]interface{} {
 	var chunkSet [][]interface{}
 	var chunk []interface{}
 
@@ -19,7 +19,7 @@ func splitObjects(objArr []interface{}, size int) [][]interface{} {
 }
 
 // Enable map keys to be retrieved in same order when iterating
-func sortedKeys(val map[string]interface{}) []string {
+func SortedKeys(val map[string]interface{}) []string {
 	var keys []string
 	for key := range val {
 		keys = append(keys, key)
@@ -29,7 +29,7 @@ func sortedKeys(val map[string]interface{}) []string {
 }
 
 // Check if string value is contained in slice
-func containString(s []string, value string) bool {
+func ContainString(s []string, value string) bool {
 	for _, v := range s {
 		if v == value {
 			return true

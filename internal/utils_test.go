@@ -1,9 +1,10 @@
-package gormbulk
+package internal
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_splitObjects(t *testing.T) {
@@ -12,7 +13,7 @@ func Test_splitObjects(t *testing.T) {
 		objArr = append(objArr, i)
 	}
 
-	objSet := splitObjects(objArr, 30)
+	objSet := SplitObjects(objArr, 30)
 
 	assert.Len(t, objSet, 4)
 	assert.Len(t, objSet[len(objSet)-1], 10)
@@ -24,7 +25,7 @@ func Test_sortedKeys(t *testing.T) {
 		value[strconv.Itoa(i)] = i
 	}
 
-	keys := sortedKeys(value)
+	keys := SortedKeys(value)
 
 	assert.Len(t, keys, 9)
 	assert.Equal(t, keys[0], "1")
@@ -34,6 +35,6 @@ func Test_sortedKeys(t *testing.T) {
 func Test_containString(t *testing.T) {
 	sliceVal := []string{"a", "b", "c"}
 
-	assert.True(t, containString(sliceVal, "a"))
-	assert.False(t, containString(sliceVal, "d"))
+	assert.True(t, ContainString(sliceVal, "a"))
+	assert.False(t, ContainString(sliceVal, "d"))
 }

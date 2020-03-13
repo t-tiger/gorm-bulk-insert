@@ -2,12 +2,14 @@ package gormbulk
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/jinzhu/gorm"
+
+	"github.com/t-tiger/gorm-bulk-insert/drivers"
+	"github.com/t-tiger/gorm-bulk-insert/internal"
 )
 
 // Insert multiple records at once
@@ -17,16 +19,31 @@ import (
 //                  Larger size will normally lead the better performance, but 2000 to 3000 is reasonable.
 // [excludeColumns] Columns you want to exclude from insert. You can omit if there is no column you want to exclude.
 func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumns ...string) error {
+	driver, err := loadDriver(db)
+	if err != nil {
+		return err
+	}
 	// Split records with specified size not to exceed Database parameter limit
-	for _, objSet := range splitObjects(objects, chunkSize) {
-		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
+	for _, objSet := range internal.SplitObjects(objects, chunkSize) {
+		if err := insertObjSet(db, driver, objSet, excludeColumns...); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
+func loadDriver(db *gorm.DB) (drivers.Driver, error) {
+	driver := (drivers.Driver)(new(drivers.Ansi))
+	if val, ok := db.Get("gorm:bulk_insert_driver"); ok {
+		driver, ok = val.(drivers.Driver)
+		if !ok {
+			return nil, errors.New("gorm:bulk_insert_driver needs to implement the gormbulk Driver interface")
+		}
+	}
+	return driver, nil
+}
+
+func insertObjSet(db *gorm.DB, driver drivers.Driver, objects []interface{}, excludeColumns ...string) (err error) {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -40,15 +57,27 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 
 	// Scope to eventually run SQL
 	mainScope := db.NewScope(objects[0])
-	// Store placeholders for embedding variables
-	placeholders := make([]string, 0, attrSize)
 
 	// Replace with database column name
 	dbColumns := make([]string, 0, attrSize)
-	for _, key := range sortedKeys(firstAttrs) {
-		dbColumns = append(dbColumns, mainScope.Quote(gorm.ToColumnName(key)))
+	for _, key := range internal.SortedKeys(firstAttrs) {
+		dbColumns = append(dbColumns, gorm.ToColumnName(key))
 	}
 
+	err = driver.Init(mainScope, dbColumns)
+	defer func() {
+		var original error
+		if err != nil {
+			original = err
+		}
+		err = driver.Cleanup()
+		if original != nil {
+			err = original
+		}
+	}()
+	if err != nil {
+		return err
+	}
 	for _, obj := range objects {
 		objAttrs, err := extractMapValue(obj, excludeColumns)
 		if err != nil {
@@ -59,40 +88,12 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		if len(objAttrs) != attrSize {
 			return errors.New("attribute sizes are inconsistent")
 		}
-
-		scope := db.NewScope(obj)
-
-		// Append variables
-		variables := make([]string, 0, attrSize)
-		for _, key := range sortedKeys(objAttrs) {
-			scope.AddToVars(objAttrs[key])
-			variables = append(variables, "?")
+		err = driver.PrepareRow(mainScope, attrSize, objAttrs, obj)
+		if err != nil {
+			return err
 		}
-
-		valueQuery := "(" + strings.Join(variables, ", ") + ")"
-		placeholders = append(placeholders, valueQuery)
-
-		// Also append variables to mainScope
-		mainScope.SQLVars = append(mainScope.SQLVars, scope.SQLVars...)
 	}
-
-	insertOption := ""
-	if val, ok := db.Get("gorm:insert_option"); ok {
-		strVal, ok := val.(string)
-		if !ok {
-			return errors.New("gorm:insert_option should be a string")
-		}
-		insertOption = strVal
-	}
-
-	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
-		mainScope.QuotedTableName(),
-		strings.Join(dbColumns, ", "),
-		strings.Join(placeholders, ", "),
-		insertOption,
-	))
-
-	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
+	return driver.Execute(mainScope, dbColumns)
 }
 
 // Obtain columns and values required for insert from interface
@@ -112,7 +113,7 @@ func extractMapValue(value interface{}, excludeColumns []string) (map[string]int
 		// Exclude relational record because it's not directly contained in database columns
 		_, hasForeignKey := field.TagSettingsGet("FOREIGNKEY")
 
-		if !containString(excludeColumns, field.Struct.Name) && field.StructField.Relationship == nil && !hasForeignKey &&
+		if !internal.ContainString(excludeColumns, field.Struct.Name) && field.StructField.Relationship == nil && !hasForeignKey &&
 			!field.IsIgnored && !fieldIsAutoIncrement(field) && !fieldIsPrimaryAndBlank(field) {
 			if (field.Struct.Name == "CreatedAt" || field.Struct.Name == "UpdatedAt") && field.IsBlank {
 				attrs[field.DBName] = time.Now()
