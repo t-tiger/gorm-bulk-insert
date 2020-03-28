@@ -119,7 +119,10 @@ func extractMapValue(value interface{}, excludeColumns []string) (map[string]int
 			} else if field.StructField.HasDefaultValue && field.IsBlank {
 				// If default value presents and field is empty, assign a default value
 				if val, ok := field.TagSettingsGet("DEFAULT"); ok {
-					attrs[field.DBName] = val
+					if val != "null" {
+						// Incase of `gorm:"default:null"` the null must be respected; assign no value.
+						attrs[field.DBName] = val
+					}
 				} else {
 					attrs[field.DBName] = field.Field.Interface()
 				}
