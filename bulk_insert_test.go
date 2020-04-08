@@ -90,16 +90,6 @@ func Test_insertObject(t *testing.T) {
 	gdb, err := gorm.Open("mysql", db)
 	require.NoError(t, err)
 
-	defaultColumnStrategy := gorm.TheNamingStrategy.Column
-
-	gorm.TheNamingStrategy.Column = func(original string) string {
-		if original == "ThisIsCamelCase" {
-			return original
-		}
-
-		return defaultColumnStrategy(original)
-	}
-
 	mock.ExpectExec(
 		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
 	).WithArgs(
