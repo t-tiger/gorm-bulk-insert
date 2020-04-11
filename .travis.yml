@@ -1,0 +1,12 @@
+language: go
+
+go:
+  - 1.12.x
+  - 1.13.x
+
+env: GO111MODULE=on
+
+go_import_path: github.com/t-tiger/gorm-bulk-insert
+
+script:
+  - go test -v ./...
