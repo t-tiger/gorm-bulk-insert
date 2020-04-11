@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,6 +74,43 @@ func Test_extractMapValue(t *testing.T) {
 	excludedKeys := collectKeys(excludedVal)
 	assert.NotContains(t, excludedKeys, "email")
 	assert.NotContains(t, excludedKeys, "created_at")
+}
+
+func Test_insertObject(t *testing.T) {
+	type Table struct {
+		RegularColumn string
+		Custom        string `gorm:"column:ThisIsCamelCase"`
+	}
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	defer db.Close()
+
+	gdb, err := gorm.Open("mysql", db)
+	require.NoError(t, err)
+
+	mock.ExpectExec(
+		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
+	).WithArgs(
+		"first custom", "first regular",
+		"second custom", "second regular",
+	).WillReturnResult(
+		sqlmock.NewResult(1, 1),
+	)
+
+	err = insertObjSet(gdb, []interface{}{
+		Table{
+			RegularColumn: "first regular",
+			Custom:        "first custom",
+		},
+		Table{
+			RegularColumn: "second regular",
+			Custom:        "second custom",
+		},
+	})
+
+	require.NoError(t, err)
 }
 
 func Test_fieldIsAutoIncrement(t *testing.T) {
