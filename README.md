@@ -98,3 +98,4 @@ func main() {
 ## License
 
 This project is under Apache 2.0 License. See the [LICENSE](https://github.com/kabukikeiji/gorm-bulk-insert/blob/master/LICENSE.txt) file for the full license text.
+
