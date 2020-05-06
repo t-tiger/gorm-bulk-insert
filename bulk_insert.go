@@ -1,3 +1,7 @@
+/*
+Package gormbulk provides a bulk-insert method using a DB instance of gorm.
+This aims to shorten the overhead caused by inserting a large number of records.
+*/
 package gormbulk
 
 import (
@@ -10,12 +14,14 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// Insert multiple records at once
-// [objects]        Must be a slice of struct
-// [chunkSize]      Number of records to insert at once.
-//                  Embedding a large number of variables at once will raise an error beyond the limit of prepared statement.
-//                  Larger size will normally lead the better performance, but 2000 to 3000 is reasonable.
-// [excludeColumns] Columns you want to exclude from insert. You can omit if there is no column you want to exclude.
+// BulkInsert executes the query to insert multiple records at once.
+//
+// [objects] must be a slice of struct.
+//
+// [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
+// and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
+//
+// [excludeColumns] is column names to exclude from insert.
 func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumns ...string) error {
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
