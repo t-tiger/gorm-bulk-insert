@@ -12,7 +12,7 @@ This library is aimed to solve the bulk insert problem.
 
 ## Installation
 
-`$ go get github.com/t-tiger/gorm-bulk-insert`
+`$ go get github.com/t-tiger/gorm-bulk-insert/v2`
 
 This library depends on gorm, following command is also necessary unless you've installed gorm.
 
