@@ -12,7 +12,7 @@ This library is aimed to solve the bulk insert problem.
 
 ## Installation
 
-`$ go get github.com/t-tiger/gorm-bulk-insert`
+`$ go get github.com/t-tiger/gorm-bulk-insert/v2`
 
 This library depends on gorm, following command is also necessary unless you've installed gorm.
 
@@ -50,11 +50,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"github.com/t-tiger/gorm-bulk-insert"
 	"log"
 	"time"
+
+	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
 )
 
 type fakeTable struct {
