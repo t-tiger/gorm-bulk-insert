@@ -50,11 +50,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/jinzhu/gorm"
-	"github.com/t-tiger/gorm-bulk-insert"
 	"log"
 	"time"
+
+	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
 )
 
 type fakeTable struct {
