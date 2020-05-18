@@ -91,7 +91,7 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		insertOption = strVal
 	}
 
-	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
+	mainScope.Raw(fmt.Sprintf("REPLACE INTO %s (%s) VALUES %s %s",
 		mainScope.QuotedTableName(),
 		strings.Join(dbColumns, ", "),
 		strings.Join(placeholders, ", "),
