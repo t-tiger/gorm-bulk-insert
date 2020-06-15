@@ -83,13 +83,13 @@ func main() {
 		)
 	}
 
-	err := gormbulk.BulkInsert(db, insertRecords, 3000)
+	err := gormbulk.BulkInsert(db, insertRecords, true, 3000)
 	if err != nil {
 		// do something
 	}
 
 	// columns you want to exclude from Insert, specify as an argument
-	err = gormbulk.BulkInsert(db, insertRecords, 3000, "Email")
+	err = gormbulk.BulkInsert(db, insertRecords, true, 3000, "Email")
         if err != nil {
             // do something
         }

@@ -18,21 +18,23 @@ import (
 //
 // [objects] must be a slice of struct.
 //
+// [ignoreError] True/False. It ignores the error which thrown by Exec function because of unique field.
+//
 // [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
 // and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
 //
 // [excludeColumns] is column names to exclude from insert.
-func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumns ...string) error {
+func BulkInsert(db *gorm.DB, objects []interface{}, ignoreError bool, chunkSize int, excludeColumns ...string) error {
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
+		if err := insertObjSet(db, objSet, ignoreError, excludeColumns...); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
+func insertObjSet(db *gorm.DB, objects []interface{}, ignoreError bool, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -91,12 +93,21 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		insertOption = strVal
 	}
 
-	mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
-		mainScope.QuotedTableName(),
-		strings.Join(dbColumns, ", "),
-		strings.Join(placeholders, ", "),
-		insertOption,
-	))
+	if ignoreError {
+		mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s ON CONFLICT DO NOTHING",
+			mainScope.QuotedTableName(),
+			strings.Join(dbColumns, ", "),
+			strings.Join(placeholders, ", "),
+			insertOption,
+		))
+	} else {
+		mainScope.Raw(fmt.Sprintf("INSERT INTO %s (%s) VALUES %s %s",
+			mainScope.QuotedTableName(),
+			strings.Join(dbColumns, ", "),
+			strings.Join(placeholders, ", "),
+			insertOption,
+		))
+	}
 
 	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
 }
