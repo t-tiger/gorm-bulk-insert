@@ -83,16 +83,33 @@ func main() {
 		)
 	}
 
-	err := gormbulk.BulkInsert(db, insertRecords, 3000)
+	err = gormbulk.BulkInsert(db, insertRecords, 3000)
 	if err != nil {
 		// do something
 	}
 
 	// columns you want to exclude from Insert, specify as an argument
 	err = gormbulk.BulkInsert(db, insertRecords, 3000, "Email")
-        if err != nil {
-            // do something
-        }
+	if err != nil {
+		// do something
+	}
+
+	// get inserted record id
+	var ids []uint
+	afterInsert := func(db *gorm.DB) error {
+		var id []uint
+		if err := db.Pluck("id", &id).Error; err != nil {
+			return err
+		}
+		ids = append(ids, id...)
+		return nil
+	}
+
+	err = gormbulk.BulkInsertWithCallback(db.Set("gorm:insert_option", "returning id"), insertRecords, 3000, afterInsert, "Email")
+	if err != nil {
+		// do something
+	}
+	fmt.Println(ids)
 }
 ```
 

@@ -32,7 +32,32 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 	return nil
 }
 
+// BulkInsertWithCallback executes the query to insert multiple records at once.
+// postInsert will exec for every bulk insert, u can use it to scan `returning id`.
+//
+// [objects] must be a slice of struct.
+//
+// [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
+// and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
+//
+// [postInsert] is a callback after every bulk insert.
+//
+// [excludeColumns] is column names to exclude from insert.
+func BulkInsertWithCallback(db *gorm.DB, objects []interface{}, chunkSize int, postInsert func(*gorm.DB) error, excludeColumns ...string) error {
+	// Split records with specified size not to exceed Database parameter limit
+	for _, objSet := range splitObjects(objects, chunkSize) {
+		if err := insertObjSetWithCallback(db, objSet, postInsert, excludeColumns...); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
+	return insertObjSetWithCallback(db, objects, nil, excludeColumns...)
+}
+
+func insertObjSetWithCallback(db *gorm.DB, objects []interface{}, postInsert func(*gorm.DB) error, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -98,7 +123,19 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		insertOption,
 	))
 
-	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
+	db = db.Raw(mainScope.SQL, mainScope.SQLVars...)
+
+	if err := db.Error; err != nil {
+		return err
+	}
+
+	if postInsert != nil {
+		if err := postInsert(db); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Obtain columns and values required for insert from interface
