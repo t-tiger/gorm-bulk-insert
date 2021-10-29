@@ -32,23 +32,39 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 	return nil
 }
 
-// BulkInsertWithCallback executes the query to insert multiple records at once.
-// postInsert will exec for every bulk insert, u can use it to scan `returning id`.
+// BulkInsertWithAssigningIDs executes the query to insert multiple records at once.
+// it will scan 'returning id' to [returningId] after every insert.
+// it's necessary to set insert_option="returning id" in *gorm.DB
+//
+// [returningId] must be a *[]uint(for integer) or *[]string(for uuid)
 //
 // [objects] must be a slice of struct.
 //
 // [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
 // and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
 //
-// [postInsert] is a callback after every bulk insert.
-//
 // [excludeColumns] is column names to exclude from insert.
-func BulkInsertWithCallback(db *gorm.DB, objects []interface{}, chunkSize int, postInsert func(*gorm.DB) error, excludeColumns ...string) error {
+func BulkInsertWithAssigningIDs(db *gorm.DB, returningId interface{}, objects []interface{}, chunkSize int, excludeColumns ...string) error {
+	typ := reflect.TypeOf(returningId)
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice {
+		return errors.New("returningId must be a slice ptr")
+	}
+
+	allIds := reflect.ValueOf(returningId).Elem()
+	typ = allIds.Type()
+
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		if err := insertObjSetWithCallback(db, objSet, postInsert, excludeColumns...); err != nil {
+		ids := reflect.New(typ)
+		scanReturningId := func(db *gorm.DB) error {
+			return db.Scan(ids.Interface()).Error
+		}
+
+		if err := insertObjSetWithCallback(db, objSet, scanReturningId, excludeColumns...); err != nil {
 			return err
 		}
+
+		allIds.Set(reflect.AppendSlice(allIds, ids.Elem()))
 	}
 	return nil
 }

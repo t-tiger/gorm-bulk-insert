@@ -113,7 +113,7 @@ func Test_insertObject(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_insertObjectReturningID(t *testing.T) {
+func Test_insertObjSetWithCallback(t *testing.T) {
 	type Table struct {
 		ID            uint `gorm:"primary_key;auto_increment"`
 		RegularColumn string
