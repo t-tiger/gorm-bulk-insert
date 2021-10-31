@@ -24,7 +24,8 @@ This library depends on gorm, following command is also necessary unless you've 
 gormbulk.BulkInsert(db, sliceValue, 3000)
 ```
 
-Third argument specifies the maximum number of records to bulk insert at once. This is because inserting a large number of records and embedding variable at once will exceed the limit of prepared statement.
+Third argument specifies the maximum number of records to bulk insert at once. This is because inserting a large number
+of records and embedding variable at once will exceed the limit of prepared statement.
 
 Depending on the number of variables included, 2000 to 3000 is recommended.
 
@@ -45,6 +46,8 @@ In the above pattern `Name` and `Email` fields are excluded.
 
 ## Example
 
+### BulkInsert
+
 ```go
 package main
 
@@ -59,7 +62,7 @@ import (
 )
 
 type fakeTable struct {
-	ID        int `gorm:"AUTO_INCREMENT"` 
+	ID        int `gorm:"AUTO_INCREMENT"`
 	Name      string
 	Email     string
 	CreatedAt time.Time
@@ -93,23 +96,68 @@ func main() {
 	if err != nil {
 		// do something
 	}
+}
+```
 
-	// get inserted record id
-	var ids []uint
-	afterInsert := func(db *gorm.DB) error {
-		var id []uint
-		if err := db.Pluck("id", &id).Error; err != nil {
-			return err
-		}
-		ids = append(ids, id...)
-		return nil
-	}
+### BulkInsertWithAssigningIDs
 
-	err = gormbulk.BulkInsertWithCallback(db.Set("gorm:insert_option", "returning id"), insertRecords, 3000, afterInsert, "Email")
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
+)
+
+type fakeTable struct {
+	IdPK      uint      `gorm:"primary_key"`
+	CreatedAt time.Time `gorm:"default:now()"`
+	Data      string
+}
+
+func main() {
+	db, err := gorm.Open("postgres", "host=localhost port=5432 user=cloudwalker dbname=cloudwalker password=cloudwalker sslmode=disable")
 	if err != nil {
-		// do something
+		panic(err)
 	}
-	fmt.Println(ids)
+	defer db.Close()
+	db.SingularTable(true)
+
+	if err := db.AutoMigrate(fakeTable{}).Error; err != nil {
+		panic(err)
+	}
+
+	models := []interface{}{
+		fakeTable{Data: "aaa"},
+		fakeTable{Data: "bbb"},
+		fakeTable{Data: "ccc"},
+	}
+
+	// if you want to scan * back
+	var returnModel []fakeTable
+	if err := gormbulk.BulkInsertWithAssigningIDs(
+		db.Set("gorm:insert_option", "returning *"), &returnModel, models, 1000); err != nil {
+		panic(err)
+	}
+	fmt.Printf("success to insert with returning: %+v\n", returnModel)
+	// success to insert with returning: [
+	// {IdPK:1 CreatedAt:2021-10-31 16:21:48.019947 +0000 UTC Data:aaa} 
+	// {IdPK:2 CreatedAt:2021-10-31 16:21:48.019959 +0000 UTC Data:bbb} 
+	// {IdPK:3 CreatedAt:2021-10-31 16:21:48.019965 +0000 UTC Data:ccc}
+	// ]
+
+	// if you want to scan primary key
+	var returnId []uint
+	if err := gormbulk.BulkInsertWithAssigningIDs(
+		db.Set("gorm:insert_option", "returning id"), &returnId, models, 1000); err != nil {
+		panic(err)
+	}
+	fmt.Printf("success to insert with returning: %+v\n", returnId)
+	// `success to insert with returning: [4 5 6]`
 }
 ```
 
