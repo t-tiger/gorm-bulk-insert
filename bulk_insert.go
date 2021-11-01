@@ -32,7 +32,65 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 	return nil
 }
 
+// BulkInsertWithAssigningIDs executes the query to insert multiple records at once.
+// it will scan the result of `returning id` or `returning *` to [returnedValue] after every insert.
+// it's necessary to set "gorm:insert_option"="returning id" in *gorm.DB
+//
+// [returnedValue] slice of primary_key or model, must be a *[]uint(for integer), *[]string(for uuid), *[]struct(for `returning *`)
+//
+// [objects] must be a slice of struct.
+//
+// [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
+// and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
+//
+// [excludeColumns] is column names to exclude from insert.
+func BulkInsertWithAssigningIDs(db *gorm.DB, returnedValue interface{}, objects []interface{}, chunkSize int, excludeColumns ...string) error {
+	typ := reflect.TypeOf(returnedValue)
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice {
+		return errors.New("returningId must be a slice ptr")
+	}
+
+	allIds := reflect.Indirect(reflect.ValueOf(returnedValue))
+	typ = allIds.Type()
+
+	// Deference value of slice
+	valueTyp := typ.Elem()
+	for valueTyp.Kind() == reflect.Ptr {
+		valueTyp = valueTyp.Elem()
+	}
+
+	// Split records with specified size not to exceed Database parameter limit
+	for _, objSet := range splitObjects(objects, chunkSize) {
+		returnValueSlice := reflect.New(typ)
+		var scanReturningId func(*gorm.DB) error
+		switch valueTyp.Kind() {
+		case reflect.Struct:
+			// If user want to scan `returning *` with returnedValue=[]struct{...}
+			scanReturningId = func(db *gorm.DB) error {
+				return db.Scan(returnValueSlice.Interface()).Error
+			}
+		default:
+			// If user want to scan primary key `returning pk` with returnedValue=[]struct{...}
+			pk := db.NewScope(objects[0]).PrimaryKey()
+			scanReturningId = func(db *gorm.DB) error {
+				return db.Pluck(pk, returnValueSlice.Interface()).Error
+			}
+		}
+
+		if err := insertObjSetWithCallback(db, objSet, scanReturningId, excludeColumns...); err != nil {
+			return err
+		}
+
+		allIds.Set(reflect.AppendSlice(allIds, returnValueSlice.Elem()))
+	}
+	return nil
+}
+
 func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
+	return insertObjSetWithCallback(db, objects, nil, excludeColumns...)
+}
+
+func insertObjSetWithCallback(db *gorm.DB, objects []interface{}, postInsert func(*gorm.DB) error, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -98,7 +156,19 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		insertOption,
 	))
 
-	return db.Exec(mainScope.SQL, mainScope.SQLVars...).Error
+	db = db.Raw(mainScope.SQL, mainScope.SQLVars...)
+
+	if err := db.Error; err != nil {
+		return err
+	}
+
+	if postInsert != nil {
+		if err := postInsert(db); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Obtain columns and values required for insert from interface

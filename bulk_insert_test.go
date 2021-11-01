@@ -113,6 +113,59 @@ func Test_insertObject(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func Test_insertObjSetWithCallback(t *testing.T) {
+	type Table struct {
+		ID            uint `gorm:"primary_key;auto_increment"`
+		RegularColumn string
+		Custom        string `gorm:"column:ThisIsCamelCase"`
+	}
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	defer db.Close()
+
+	gdb, err := gorm.Open("mysql", db)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(
+		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
+	).WithArgs(
+		"first custom", "first regular",
+		"second custom", "second regular",
+	).WillReturnRows(
+		sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2),
+	)
+
+	returningIdScope := func(db *gorm.DB) *gorm.DB {
+		return db.Set("gorm:insert_option", "returning id")
+	}
+
+	err = insertObjSetWithCallback(gdb.Scopes(returningIdScope), []interface{}{
+		Table{
+			RegularColumn: "first regular",
+			Custom:        "first custom",
+		},
+		Table{
+			RegularColumn: "second regular",
+			Custom:        "second custom",
+		},
+	}, func(db *gorm.DB) error {
+		var ids []uint
+		if err := db.Pluck("id", &ids).Error; err != nil {
+			return err
+		}
+		require.Len(t, ids, 2, "must return 2 ids")
+		return nil
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	require.NoError(t, err)
+}
+
 func Test_fieldIsAutoIncrement(t *testing.T) {
 	type explicitSetTable struct {
 		ID int `gorm:"column:id;auto_increment"`
