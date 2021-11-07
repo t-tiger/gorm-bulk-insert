@@ -26,6 +26,55 @@ type fakeTable struct {
 	UpdatedAt time.Time
 }
 
+func TestBulkInsertWithReturningValues(t *testing.T) {
+	type Table struct {
+		ID            uint `gorm:"primary_key;auto_increment"`
+		RegularColumn string
+		Custom        string `gorm:"column:ThisIsCamelCase"`
+	}
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	defer db.Close()
+
+	gdb, err := gorm.Open("mysql", db)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(
+		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
+	).WithArgs(
+		"first custom", "first regular",
+		"second custom", "second regular",
+	).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "ThisIsCamelCase", "regular_column"}).
+			AddRow(1, "first custom", "first regular").
+			AddRow(2, "second custom", "second regular"),
+	)
+
+	var returnedVals []Table
+	obj := []interface{}{
+		Table{
+			RegularColumn: "first regular",
+			Custom:        "first custom",
+		},
+		Table{
+			RegularColumn: "second regular",
+			Custom:        "second custom",
+		},
+	}
+
+	gdb = gdb.Set("gorm_insert_option", "RETURNING id, ThisIsCamelCase, regular_column")
+	err = BulkInsertWithReturningValues(gdb, obj, &returnedVals, 1000)
+	require.NoError(t, err)
+
+	expected := []Table{
+		{ID: 1, RegularColumn: "first regular", Custom: "first custom"},
+		{ID: 2, RegularColumn: "second regular", Custom: "second custom"},
+	}
+	assert.Equal(t, expected, returnedVals)
+}
+
 func Test_extractMapValue(t *testing.T) {
 	collectKeys := func(val map[string]interface{}) []string {
 		keys := make([]string, 0, len(val))
@@ -99,7 +148,7 @@ func Test_insertObject(t *testing.T) {
 		sqlmock.NewResult(1, 1),
 	)
 
-	err = insertObjSet(gdb, []interface{}{
+	_, err = insertObjSet(gdb, []interface{}{
 		Table{
 			RegularColumn: "first regular",
 			Custom:        "first custom",
@@ -109,59 +158,6 @@ func Test_insertObject(t *testing.T) {
 			Custom:        "second custom",
 		},
 	})
-
-	require.NoError(t, err)
-}
-
-func Test_insertObjSetWithCallback(t *testing.T) {
-	type Table struct {
-		ID            uint `gorm:"primary_key;auto_increment"`
-		RegularColumn string
-		Custom        string `gorm:"column:ThisIsCamelCase"`
-	}
-
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-
-	defer db.Close()
-
-	gdb, err := gorm.Open("mysql", db)
-	require.NoError(t, err)
-
-	mock.ExpectQuery(
-		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
-	).WithArgs(
-		"first custom", "first regular",
-		"second custom", "second regular",
-	).WillReturnRows(
-		sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2),
-	)
-
-	returningIdScope := func(db *gorm.DB) *gorm.DB {
-		return db.Set("gorm:insert_option", "returning id")
-	}
-
-	err = insertObjSetWithCallback(gdb.Scopes(returningIdScope), []interface{}{
-		Table{
-			RegularColumn: "first regular",
-			Custom:        "first custom",
-		},
-		Table{
-			RegularColumn: "second regular",
-			Custom:        "second custom",
-		},
-	}, func(db *gorm.DB) error {
-		var ids []uint
-		if err := db.Pluck("id", &ids).Error; err != nil {
-			return err
-		}
-		require.Len(t, ids, 2, "must return 2 ids")
-		return nil
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	require.NoError(t, err)
 }
@@ -192,30 +188,6 @@ func Test_fieldIsAutoIncrement(t *testing.T) {
 	for _, c := range cases {
 		for _, field := range (&gorm.Scope{Value: c.Value}).Fields() {
 			assert.Equal(t, fieldIsAutoIncrement(field), c.Expected)
-		}
-	}
-}
-
-func Test_fieldIsPrimaryAndBlank(t *testing.T) {
-	type notPrimaryTable struct {
-		Dummy int
-	}
-	type primaryKeyTable struct {
-		ID int `gorm:"column:id;primary_key"`
-	}
-
-	cases := []struct {
-		Value    interface{}
-		Expected bool
-	}{
-		{notPrimaryTable{Dummy: 0}, false},
-		{notPrimaryTable{Dummy: 1}, false},
-		{primaryKeyTable{ID: 0}, true},
-		{primaryKeyTable{ID: 1}, false},
-	}
-	for _, c := range cases {
-		for _, field := range (&gorm.Scope{Value: c.Value}).Fields() {
-			assert.Equal(t, fieldIsPrimaryAndBlank(field), c.Expected)
 		}
 	}
 }
