@@ -85,9 +85,9 @@ func TestBulkInsertWithReturningValues_InvalidTypeOfReturnedVals(t *testing.T) {
 	tests := []struct {
 		name string
 		vals interface{}
-	} {
-		{name: "not a pointer", vals: []struct{Name string}{{Name: "1"}}},
-		{name: "element is not a slice", vals: &struct{Name string}{Name: "1"}},
+	}{
+		{name: "not a pointer", vals: []struct{ Name string }{{Name: "1"}}},
+		{name: "element is not a slice", vals: &struct{ Name string }{Name: "1"}},
 		{name: "slice element is not a struct", vals: &[]string{"1"}},
 	}
 	for _, tt := range tests {
@@ -211,6 +211,30 @@ func Test_fieldIsAutoIncrement(t *testing.T) {
 	for _, c := range cases {
 		for _, field := range (&gorm.Scope{Value: c.Value}).Fields() {
 			assert.Equal(t, fieldIsAutoIncrement(field), c.Expected)
+		}
+	}
+}
+
+func Test_fieldIsPrimaryAndBlank(t *testing.T) {
+	type notPrimaryTable struct {
+		Dummy int
+	}
+	type primaryKeyTable struct {
+		ID int `gorm:"column:id;primary_key"`
+	}
+
+	cases := []struct {
+		Value    interface{}
+		Expected bool
+	}{
+		{notPrimaryTable{Dummy: 0}, false},
+		{notPrimaryTable{Dummy: 1}, false},
+		{primaryKeyTable{ID: 0}, true},
+		{primaryKeyTable{ID: 1}, false},
+	}
+	for _, c := range cases {
+		for _, field := range (&gorm.Scope{Value: c.Value}).Fields() {
+			assert.Equal(t, fieldIsPrimaryAndBlank(field), c.Expected)
 		}
 	}
 }
