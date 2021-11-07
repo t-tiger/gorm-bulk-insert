@@ -39,7 +39,7 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 //
 // [objects] must be a slice of struct.
 //
-// [dstValues] must be a point to a slice of struct. Struct properties must correspond to returning results.
+// [returnedVals] must be a point to a slice of struct. Values returned from `RETURNING` clause will be assigned.
 //
 // [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
 // and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
