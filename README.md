@@ -50,62 +50,64 @@ In the above pattern `Name` and `Email` fields are excluded.
 package main
 
 import (
-	"fmt"
-	"log"
-	"time"
+  "fmt"
+  "log"
+  "time"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
-	gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
+  "github.com/jinzhu/gorm"
+  _ "github.com/jinzhu/gorm/dialects/mysql"
+  gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
 )
 
 type fakeTable struct {
-	ID        int `gorm:"AUTO_INCREMENT"`
-	Name      string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+  ID        int `gorm:"AUTO_INCREMENT"`
+  Name      string
+  Email     string
+  CreatedAt time.Time
+  UpdatedAt time.Time
 }
 
 func main() {
-	db, err := gorm.Open("mysql", "mydb")
-	if err != nil {
-		log.Fatal(err)
-	}
+  db, err := gorm.Open("mysql", "mydb")
+  if err != nil {
+    log.Fatal(err)
+  }
 
-	var insertRecords []interface{}
-	for i := 0; i < 10; i++ {
-		insertRecords = append(insertRecords,
-			fakeTable{
-				Name:  fmt.Sprintf("name%d", i),
-				Email: fmt.Sprintf("test%d@test.com", i),
-				// you don't need to set CreatedAt, UpdatedAt
-			},
-		)
-	}
+  var insertRecords []interface{}
+  for i := 0; i < 10; i++ {
+    insertRecords = append(insertRecords,
+      fakeTable{
+        Name:  fmt.Sprintf("name%d", i),
+        Email: fmt.Sprintf("test%d@test.com", i),
+        // you don't need to set CreatedAt, UpdatedAt
+      },
+    )
+  }
 
-	err = gormbulk.BulkInsert(db, insertRecords, 3000)
-	if err != nil {
-		// do something
-	}
+  err = gormbulk.BulkInsert(db, insertRecords, 3000)
+  if err != nil {
+    // do something
+  }
 
-	// Columns you want to exclude from Insert, specify as an argument
-	err = gormbulk.BulkInsert(db, insertRecords, 3000, "Email")
-	if err != nil {
-		// do something
-	}
-	
-	// Fetch returning values 
-	dbForReturning := db.Set("gorm:insert_option", "RETURNING id, name, created_at")
-	var returned []struct{
-      ID        int
-      Name      string
-      CreatedAt time.Time
-    }
-    err = gormbulk.BulkInsertWithReturningValues(dbForReturning, insertRecords, &returned, 3000)
-	if err != nil {
-		// do something
-    }
+  // Columns you want to exclude from Insert, specify as an argument
+  err = gormbulk.BulkInsert(db, insertRecords, 3000, "Email")
+  if err != nil {
+    // do something
+  }
+
+  // Fetch returning values
+  dbForReturning := db.Set("gorm:insert_option", "RETURNING id, name, created_at")
+  var returned []struct {
+    ID        int
+    Name      string
+    CreatedAt time.Time
+  }
+  err = gormbulk.BulkInsertWithReturningValues(dbForReturning, insertRecords, &returned, 3000)
+  if err != nil {
+    // do something
+  }
+  // Values of `returned` will be as follows
+  // {{ID: 1, Name: "name0", CreatedAt: 2021-10-31 16:21:48.019947 +0000 UTC}, ...}
 }
 ```
 
