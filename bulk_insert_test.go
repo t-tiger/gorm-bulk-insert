@@ -35,7 +35,6 @@ func TestBulkInsertWithReturningValues(t *testing.T) {
 
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-
 	defer db.Close()
 
 	gdb, err := gorm.Open("mysql", db)
@@ -73,6 +72,30 @@ func TestBulkInsertWithReturningValues(t *testing.T) {
 		{ID: 2, RegularColumn: "second regular", Custom: "second custom"},
 	}
 	assert.Equal(t, expected, returnedVals)
+}
+
+func TestBulkInsertWithReturningValues_InvalidTypeOfReturnedVals(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	gdb, err := gorm.Open("mysql", db)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name string
+		vals interface{}
+	} {
+		{name: "not a pointer", vals: []struct{Name string}{{Name: "1"}}},
+		{name: "element is not a slice", vals: &struct{Name string}{Name: "1"}},
+		{name: "slice element is not a struct", vals: &[]string{"1"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := BulkInsertWithReturningValues(gdb, []interface{}{}, tt.vals, 1000)
+			assert.EqualError(t, err, "returnedVals must be a pointer to a slice of struct")
+		})
+	}
 }
 
 func Test_extractMapValue(t *testing.T) {
