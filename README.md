@@ -46,8 +46,6 @@ In the above pattern `Name` and `Email` fields are excluded.
 
 ## Example
 
-### BulkInsert
-
 ```go
 package main
 
@@ -91,73 +89,23 @@ func main() {
 		// do something
 	}
 
-	// columns you want to exclude from Insert, specify as an argument
+	// Columns you want to exclude from Insert, specify as an argument
 	err = gormbulk.BulkInsert(db, insertRecords, 3000, "Email")
 	if err != nil {
 		// do something
 	}
-}
-```
-
-### BulkInsertWithAssigningIDs
-
-```go
-package main
-
-import (
-	"fmt"
-	"time"
-
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	gormbulk "github.com/t-tiger/gorm-bulk-insert/v2"
-)
-
-type fakeTable struct {
-	IdPK      uint      `gorm:"primary_key"`
-	CreatedAt time.Time `gorm:"default:now()"`
-	Data      string
-}
-
-func main() {
-	db, err := gorm.Open("postgres", "host=localhost port=5432 user=cloudwalker dbname=cloudwalker password=cloudwalker sslmode=disable")
+	
+	// Fetch returning values 
+	dbForReturning := db.Set("gorm:insert_option", "RETURNING id, name, created_at")
+	var returned []struct{
+      ID        int
+      Name      string
+      CreatedAt time.Time
+    }
+    err = gormbulk.BulkInsertWithReturningValues(dbForReturning, insertRecords, &returned, 3000)
 	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	db.SingularTable(true)
-
-	if err := db.AutoMigrate(fakeTable{}).Error; err != nil {
-		panic(err)
-	}
-
-	models := []interface{}{
-		fakeTable{Data: "aaa"},
-		fakeTable{Data: "bbb"},
-		fakeTable{Data: "ccc"},
-	}
-
-	// if you want to scan * back
-	var returnModel []fakeTable
-	if err := gormbulk.BulkInsertWithAssigningIDs(
-		db.Set("gorm:insert_option", "returning *"), &returnModel, models, 1000); err != nil {
-		panic(err)
-	}
-	fmt.Printf("success to insert with returning: %+v\n", returnModel)
-	// success to insert with returning: [
-	// {IdPK:1 CreatedAt:2021-10-31 16:21:48.019947 +0000 UTC Data:aaa} 
-	// {IdPK:2 CreatedAt:2021-10-31 16:21:48.019959 +0000 UTC Data:bbb} 
-	// {IdPK:3 CreatedAt:2021-10-31 16:21:48.019965 +0000 UTC Data:ccc}
-	// ]
-
-	// if you want to scan primary key
-	var returnId []uint
-	if err := gormbulk.BulkInsertWithAssigningIDs(
-		db.Set("gorm:insert_option", "returning id"), &returnId, models, 1000); err != nil {
-		panic(err)
-	}
-	fmt.Printf("success to insert with returning: %+v\n", returnId)
-	// `success to insert with returning: [4 5 6]`
+		// do something
+    }
 }
 ```
 
