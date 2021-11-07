@@ -61,8 +61,8 @@ import (
 
 type fakeTable struct {
 	ID        int `gorm:"AUTO_INCREMENT"`
-	Name	  string
-	Email	  string
+	Name      string
+	Email     string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -106,7 +106,7 @@ func main() {
 	if err != nil {
 		// do something
 	}
-	// Values of `returned` will be as follows
+	// Values of `returned` will be like this
 	// {{ID: 1, Name: "name0", CreatedAt: 2021-10-31 16:21:48.019947 +0000 UTC}, ...}
 }
 ```

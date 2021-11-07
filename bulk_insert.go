@@ -53,7 +53,6 @@ func BulkInsertWithReturningValues(db *gorm.DB, objects []interface{}, returnedV
 	}
 
 	refDst := reflect.Indirect(reflect.ValueOf(returnedVals))
-	typ = refDst.Type()
 
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
@@ -61,7 +60,7 @@ func BulkInsertWithReturningValues(db *gorm.DB, objects []interface{}, returnedV
 		if err != nil {
 			return err
 		}
-		scanned := reflect.New(typ)
+		scanned := reflect.New(refDst.Type())
 		if err := db.Scan(scanned.Interface()).Error; err != nil {
 			return err
 		}
