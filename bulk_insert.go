@@ -34,8 +34,9 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 }
 
 // BulkInsertWithReturningValues executes the query to insert multiple records at once.
-// This will scan the returned value into `dstValues`.
-// It's necessary to set "gorm:insert_option" to execute "returning" query.
+// This will scan the returned values into `returnedVals`.
+//
+// [db] must be set with "gorm:insert_option" to execute RETURNING clause. e.g. db.Set("gorm:insert_option", "RETURNING id")
 //
 // [objects] must be a slice of struct.
 //
