@@ -96,13 +96,12 @@ func main() {
 	}
 
 	// Fetch returning values
-	dbForReturning := db.Set("gorm:insert_option", "RETURNING id, name, created_at")
 	var returned []struct {
 		ID        int
 		Name	  string
 		CreatedAt time.Time
 	}
-	err = gormbulk.BulkInsertWithReturningValues(dbForReturning, insertRecords, &returned, 3000)
+	err = gormbulk.BulkInsertWithReturningValues(db, insertRecords, &returned, 3000)
 	if err != nil {
 		// do something
 	}

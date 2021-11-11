@@ -25,8 +25,7 @@ import (
 func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumns ...string) error {
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		_, err := insertObjSet(db, objSet, excludeColumns...)
-		if err != nil {
+		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
 			return err
 		}
 	}
@@ -35,8 +34,6 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 
 // BulkInsertWithReturningValues executes the query to insert multiple records at once.
 // This will scan the returned values into `returnedVals`.
-//
-// [db] must be set with "gorm:insert_option" to execute RETURNING clause. e.g. db.Set("gorm:insert_option", "RETURNING id")
 //
 // [objects] must be a slice of struct.
 //
@@ -51,13 +48,19 @@ func BulkInsertWithReturningValues(db *gorm.DB, objects []interface{}, returnedV
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice || typ.Elem().Elem().Kind() != reflect.Struct {
 		return errors.New("returnedVals must be a pointer to a slice of struct")
 	}
-
 	refDst := reflect.Indirect(reflect.ValueOf(returnedVals))
+
+	// set insert_option
+	fields := (&gorm.Scope{Value: returnedVals}).Fields()
+	returningCols := make([]string, len(fields))
+	for i, f := range fields {
+		returningCols[i] = f.DBName
+	}
+	db = db.Set("gorm:insert_option", fmt.Sprintf("RETURNING %s", strings.Join(returningCols, ", ")))
 
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		db, err := insertObjSet(db, objSet, excludeColumns...)
-		if err != nil {
+		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
 			return err
 		}
 		scanned := reflect.New(refDst.Type())
@@ -69,14 +72,14 @@ func BulkInsertWithReturningValues(db *gorm.DB, objects []interface{}, returnedV
 	return nil
 }
 
-func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) (*gorm.DB, error) {
+func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
 	if len(objects) == 0 {
-		return db, nil
+		return nil
 	}
 
 	firstAttrs, err := extractMapValue(objects[0], excludeColumns)
 	if err != nil {
-		return db, err
+		return err
 	}
 
 	attrSize := len(firstAttrs)
@@ -95,12 +98,12 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 	for _, obj := range objects {
 		objAttrs, err := extractMapValue(obj, excludeColumns)
 		if err != nil {
-			return db, err
+			return err
 		}
 
 		// If object sizes are different, SQL statement loses consistency
 		if len(objAttrs) != attrSize {
-			return db, errors.New("attribute sizes are inconsistent")
+			return errors.New("attribute sizes are inconsistent")
 		}
 
 		scope := db.NewScope(obj)
@@ -123,7 +126,7 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 	if val, ok := db.Get("gorm:insert_option"); ok {
 		strVal, ok := val.(string)
 		if !ok {
-			return db, errors.New("gorm:insert_option should be a string")
+			return errors.New("gorm:insert_option should be a string")
 		}
 		insertOption = strVal
 	}
@@ -135,11 +138,11 @@ func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) 
 		insertOption,
 	))
 
-	db = db.Raw(mainScope.SQL, mainScope.SQLVars...)
+	*db = *db.Raw(mainScope.SQL, mainScope.SQLVars...)
 	if err := db.Error; err != nil {
-		return db, err
+		return err
 	}
-	return db, nil
+	return nil
 }
 
 // Obtain columns and values required for insert from interface

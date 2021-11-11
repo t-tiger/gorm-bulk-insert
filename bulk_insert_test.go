@@ -63,7 +63,6 @@ func TestBulkInsertWithReturningValues(t *testing.T) {
 		},
 	}
 
-	gdb = gdb.Set("gorm_insert_option", "RETURNING id, ThisIsCamelCase, regular_column")
 	err = BulkInsertWithReturningValues(gdb, obj, &returnedVals, 1000)
 	require.NoError(t, err)
 
@@ -171,7 +170,7 @@ func Test_insertObject(t *testing.T) {
 		sqlmock.NewResult(1, 1),
 	)
 
-	_, err = insertObjSet(gdb, []interface{}{
+	err = insertObjSet(gdb, []interface{}{
 		Table{
 			RegularColumn: "first regular",
 			Custom:        "first custom",
