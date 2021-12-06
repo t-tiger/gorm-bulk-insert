@@ -32,65 +32,81 @@ func BulkInsert(db *gorm.DB, objects []interface{}, chunkSize int, excludeColumn
 	return nil
 }
 
-// BulkInsertWithAssigningIDs executes the query to insert multiple records at once.
-// it will scan the result of `returning id` or `returning *` to [returnedValue] after every insert.
-// it's necessary to set "gorm:insert_option"="returning id" in *gorm.DB
-//
-// [returnedValue] slice of primary_key or model, must be a *[]uint(for integer), *[]string(for uuid), *[]struct(for `returning *`)
+// BulkInsertWithReturningValues executes the query to insert multiple records at once.
+// This will scan the returned values into `returnedVals`.
 //
 // [objects] must be a slice of struct.
+//
+// [returnedVals] must be a point to a slice of struct. Values returned from `RETURNING` clause will be assigned.
 //
 // [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
 // and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
 //
 // [excludeColumns] is column names to exclude from insert.
-func BulkInsertWithAssigningIDs(db *gorm.DB, returnedValue interface{}, objects []interface{}, chunkSize int, excludeColumns ...string) error {
-	typ := reflect.TypeOf(returnedValue)
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice {
-		return errors.New("returningId must be a slice ptr")
+func BulkInsertWithReturningValues(db *gorm.DB, objects []interface{}, returnedVals interface{}, chunkSize int, excludeColumns ...string) error {
+	typ := reflect.TypeOf(returnedVals)
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice || typ.Elem().Elem().Kind() != reflect.Struct {
+		return errors.New("returnedVals must be a pointer to a slice of struct")
 	}
+	refDst := reflect.Indirect(reflect.ValueOf(returnedVals))
 
-	allIds := reflect.Indirect(reflect.ValueOf(returnedValue))
-	typ = allIds.Type()
-
-	// Deference value of slice
-	valueTyp := typ.Elem()
-	for valueTyp.Kind() == reflect.Ptr {
-		valueTyp = valueTyp.Elem()
+	// set insert_option
+	fields := (&gorm.Scope{Value: returnedVals}).Fields()
+	returningCols := make([]string, len(fields))
+	for i, f := range fields {
+		returningCols[i] = f.DBName
 	}
+	db = db.Set("gorm:insert_option", fmt.Sprintf("RETURNING %s", strings.Join(returningCols, ", ")))
 
 	// Split records with specified size not to exceed Database parameter limit
 	for _, objSet := range splitObjects(objects, chunkSize) {
-		returnValueSlice := reflect.New(typ)
-		var scanReturningId func(*gorm.DB) error
-		switch valueTyp.Kind() {
-		case reflect.Struct:
-			// If user want to scan `returning *` with returnedValue=[]struct{...}
-			scanReturningId = func(db *gorm.DB) error {
-				return db.Scan(returnValueSlice.Interface()).Error
-			}
-		default:
-			// If user want to scan primary key `returning pk` with returnedValue=[]struct{...}
-			pk := db.NewScope(objects[0]).PrimaryKey()
-			scanReturningId = func(db *gorm.DB) error {
-				return db.Pluck(pk, returnValueSlice.Interface()).Error
-			}
-		}
-
-		if err := insertObjSetWithCallback(db, objSet, scanReturningId, excludeColumns...); err != nil {
+		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
 			return err
 		}
+		scanned := reflect.New(refDst.Type())
+		if err := db.Scan(scanned.Interface()).Error; err != nil {
+			return err
+		}
+		refDst.Set(reflect.AppendSlice(refDst, scanned.Elem()))
+	}
+	return nil
+}
 
-		allIds.Set(reflect.AppendSlice(allIds, returnValueSlice.Elem()))
+// BulkInsertWithReturningIDs executes the query to insert multiple records at once.
+// This will scan the returned id into `returnedIDs`. If the target table does not have "id" column, please use BulkInsertWithReturningValues instead.
+//
+// [objects] must be a slice of struct.
+//
+// [returnedVals] must be a point to a slice. Values returned from `RETURNING` clause will be assigned.
+//
+// [chunkSize] is a number of variables embedded in query. To prevent the error which occurs embedding a large number of variables at once
+// and exceeds the limit of prepared statement. Larger size normally leads to better performance, in most cases 2000 to 3000 is reasonable.
+//
+// [excludeColumns] is column names to exclude from insert.
+func BulkInsertWithReturningIDs(db *gorm.DB, objects []interface{}, returnedIDs interface{}, chunkSize int, excludeColumns ...string) error {
+	typ := reflect.TypeOf(returnedIDs)
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Slice {
+		return errors.New("returnedVals must be a pointer to a slice")
+	}
+	refDst := reflect.Indirect(reflect.ValueOf(returnedIDs))
+
+	db = db.Set("gorm:insert_option", "RETURNING id")
+
+	// Split records with specified size not to exceed Database parameter limit
+	for _, objSet := range splitObjects(objects, chunkSize) {
+		if err := insertObjSet(db, objSet, excludeColumns...); err != nil {
+			return err
+		}
+		ids := reflect.New(refDst.Type())
+		if err := db.Pluck("ID", ids.Interface()).Error; err != nil {
+			return err
+		}
+		refDst.Set(reflect.AppendSlice(refDst, ids.Elem()))
 	}
 	return nil
 }
 
 func insertObjSet(db *gorm.DB, objects []interface{}, excludeColumns ...string) error {
-	return insertObjSetWithCallback(db, objects, nil, excludeColumns...)
-}
-
-func insertObjSetWithCallback(db *gorm.DB, objects []interface{}, postInsert func(*gorm.DB) error, excludeColumns ...string) error {
 	if len(objects) == 0 {
 		return nil
 	}
@@ -156,18 +172,10 @@ func insertObjSetWithCallback(db *gorm.DB, objects []interface{}, postInsert fun
 		insertOption,
 	))
 
-	db = db.Raw(mainScope.SQL, mainScope.SQLVars...)
-
+	*db = *db.Raw(mainScope.SQL, mainScope.SQLVars...)
 	if err := db.Error; err != nil {
 		return err
 	}
-
-	if postInsert != nil {
-		if err := postInsert(db); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

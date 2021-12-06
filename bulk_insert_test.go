@@ -26,6 +26,77 @@ type fakeTable struct {
 	UpdatedAt time.Time
 }
 
+func TestBulkInsertWithReturningValues(t *testing.T) {
+	type Table struct {
+		ID            uint `gorm:"primary_key;auto_increment"`
+		RegularColumn string
+		Custom        string `gorm:"column:ThisIsCamelCase"`
+	}
+
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	gdb, err := gorm.Open("mysql", db)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(
+		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
+	).WithArgs(
+		"first custom", "first regular",
+		"second custom", "second regular",
+	).WillReturnRows(
+		sqlmock.NewRows([]string{"id", "ThisIsCamelCase", "regular_column"}).
+			AddRow(1, "first custom", "first regular").
+			AddRow(2, "second custom", "second regular"),
+	)
+
+	var returnedVals []Table
+	obj := []interface{}{
+		Table{
+			RegularColumn: "first regular",
+			Custom:        "first custom",
+		},
+		Table{
+			RegularColumn: "second regular",
+			Custom:        "second custom",
+		},
+	}
+
+	err = BulkInsertWithReturningValues(gdb, obj, &returnedVals, 1000)
+	require.NoError(t, err)
+
+	expected := []Table{
+		{ID: 1, RegularColumn: "first regular", Custom: "first custom"},
+		{ID: 2, RegularColumn: "second regular", Custom: "second custom"},
+	}
+	assert.Equal(t, expected, returnedVals)
+}
+
+func TestBulkInsertWithReturningValues_InvalidTypeOfReturnedVals(t *testing.T) {
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	gdb, err := gorm.Open("mysql", db)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name string
+		vals interface{}
+	}{
+		{name: "not a pointer", vals: []struct{ Name string }{{Name: "1"}}},
+		{name: "element is not a slice", vals: &struct{ Name string }{Name: "1"}},
+		{name: "slice element is not a struct", vals: &[]string{"1"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := BulkInsertWithReturningValues(gdb, []interface{}{}, tt.vals, 1000)
+			assert.EqualError(t, err, "returnedVals must be a pointer to a slice of struct")
+		})
+	}
+}
+
 func Test_extractMapValue(t *testing.T) {
 	collectKeys := func(val map[string]interface{}) []string {
 		keys := make([]string, 0, len(val))
@@ -109,59 +180,6 @@ func Test_insertObject(t *testing.T) {
 			Custom:        "second custom",
 		},
 	})
-
-	require.NoError(t, err)
-}
-
-func Test_insertObjSetWithCallback(t *testing.T) {
-	type Table struct {
-		ID            uint `gorm:"primary_key;auto_increment"`
-		RegularColumn string
-		Custom        string `gorm:"column:ThisIsCamelCase"`
-	}
-
-	db, mock, err := sqlmock.New()
-	require.NoError(t, err)
-
-	defer db.Close()
-
-	gdb, err := gorm.Open("mysql", db)
-	require.NoError(t, err)
-
-	mock.ExpectQuery(
-		"INSERT INTO `tables` \\(`ThisIsCamelCase`, `regular_column`\\)",
-	).WithArgs(
-		"first custom", "first regular",
-		"second custom", "second regular",
-	).WillReturnRows(
-		sqlmock.NewRows([]string{"id"}).AddRow(1).AddRow(2),
-	)
-
-	returningIdScope := func(db *gorm.DB) *gorm.DB {
-		return db.Set("gorm:insert_option", "returning id")
-	}
-
-	err = insertObjSetWithCallback(gdb.Scopes(returningIdScope), []interface{}{
-		Table{
-			RegularColumn: "first regular",
-			Custom:        "first custom",
-		},
-		Table{
-			RegularColumn: "second regular",
-			Custom:        "second custom",
-		},
-	}, func(db *gorm.DB) error {
-		var ids []uint
-		if err := db.Pluck("id", &ids).Error; err != nil {
-			return err
-		}
-		require.Len(t, ids, 2, "must return 2 ids")
-		return nil
-	})
-
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	require.NoError(t, err)
 }
