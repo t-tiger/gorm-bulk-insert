@@ -96,17 +96,22 @@ func main() {
 	}
 
 	// Fetch returning values
-	var returned []struct {
+	var returnedVals []struct {
 		ID        int
 		Name	  string
 		CreatedAt time.Time
 	}
-	err = gormbulk.BulkInsertWithReturningValues(db, insertRecords, &returned, 3000)
+	err = gormbulk.BulkInsertWithReturningValues(db, insertRecords, &returnedVals, 3000)
 	if err != nil {
 		// do something
 	}
-	// Values of `returned` will be like this
-	// {{ID: 1, Name: "name0", CreatedAt: 2021-10-31 16:21:48.019947 +0000 UTC}, ...}
+	
+	// Fetch returned IDs
+	var returnedIDs []int
+	err = gormbulk.BulkInsertWithReturningIDs(db, insertRecords, &returnedIDs, 3000)
+	if err != nil {
+		// do something
+	}
 }
 ```
 
